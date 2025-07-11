@@ -33,11 +33,11 @@
 ## Инструкция по запуску
 **Установить зависимости**:
 
-*pip install flask transformers torch beautifulsoup4 requests pandas*
+`pip install flask transformers torch beautifulsoup4 requests pandas`
 
 **Запустить сервер**:
 
-*python app.py*
+`python app.py`
 
 **Открыть в браузере**: http://localhost:5000.
 
