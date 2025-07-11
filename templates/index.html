@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Furniture Store Analyzer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 25px;
+            display: flex;
+            gap: 10px;
+        }
+        #url-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 40px;
+        }
+        .product {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 4px solid #3498db;
+        }
+        .product h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 1.2em;
+        }
+        .price {
+            font-weight: bold;
+            color: #27ae60;
+            font-size: 1.1em;
+        }
+        .attribute {
+            margin-top: 8px;
+        }
+        .attribute strong {
+            color: #7f8c8d;
+        }
+        .loading {
+            text-align: center;
+            display: none;
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+            padding: 15px;
+            background-color: #fadbd8;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .no-products {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 20px;
+            font-style: italic;
+        }
+        .summary {
+            background-color: #eaf2f8;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Furniture Store Analyzer</h1>
+        <p>Enter the URL of an English-language furniture store website to extract product information:</p>
+        
+        <div class="input-group">
+            <input type="text" id="url-input" placeholder="https://www.example.com">
+            <button id="analyze-btn">Analyze</button>
+        </div>
+        
+        <div class="error" id="error"></div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing the website, please wait...</p>
+        </div>
+        
+        <div class="results">
+            <div class="summary" id="summary" style="display: none;">
+                Found <span id="product-count">0</span> products at <span id="site-url"></span>
+            </div>
+            <div id="products-container"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const urlInput = document.getElementById('url-input');
+            const loadingDiv = document.getElementById('loading');
+            const errorDiv = document.getElementById('error');
+            const productsContainer = document.getElementById('products-container');
+            const summaryDiv = document.getElementById('summary');
+            const productCountSpan = document.getElementById('product-count');
+            const siteUrlSpan = document.getElementById('site-url');
+            
+            analyzeBtn.addEventListener('click', analyzeUrl);
+            urlInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    analyzeUrl();
+                }
+            });
+            
+            function analyzeUrl() {
+                const url = urlInput.value.trim();
+                
+                // Basic validation
+                if (!url) {
+                    showError('Please enter a URL');
+                    return;
+                }
+                
+                // Show loading state
+                loadingDiv.style.display = 'block';
+                errorDiv.style.display = 'none';
+                analyzeBtn.disabled = true;
+                productsContainer.innerHTML = '';
+                summaryDiv.style.display = 'none';
+                
+                // Send request to backend
+                fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw err; });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    displayResults(data);
+                })
+                .catch(error => {
+                    showError(error.error || 'An error occurred while analyzing the website');
+                })
+                .finally(() => {
+                    loadingDiv.style.display = 'none';
+                    analyzeBtn.disabled = false;
+                });
+            }
+            
+            function showError(message) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            }
+            
+            function displayResults(data) {
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                siteUrlSpan.textContent = data.url;
+                productCountSpan.textContent = data.count;
+                summaryDiv.style.display = 'block';
+                
+                if (data.count === 0) {
+                    productsContainer.innerHTML = '<div class="no-products">No products found on this page</div>';
+                    return;
+                }
+                
+                let html = '';
+                data.products.forEach(product => {
+                    html += `
+                        <div class="product">
+                            <h3>${product.entity || 'Unnamed product'}</h3>
+                            <div class="attribute"><strong>Full line:</strong> ${product.full_line}</div>
+                        </div>
+                    `;
+                });
+                
+                productsContainer.innerHTML = html;
+            }
+        });
+    </script>
+</body>
+</html>
